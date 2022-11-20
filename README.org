@@ -1,0 +1,11 @@
+#+TITLE: Lambda Society of Studies in Logic Type Theory
+
+* About
+
+For the past few years, we found ourselves mesmerized about the beauty
+behind type theory, logic and grammar; and for that reason we face the
+necessity to centralize our subjects of study under the same place:
+this repository.
+
+* Subjects of study
+- [[file:CalculusOfConstructions/README.org][Calculus of Constructions]]
