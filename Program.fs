@@ -7,7 +7,9 @@
 
 module AST =
 
-    type Variable = {| Label: string |}
+    type Variable = Variable of {| Label: string |}
+        with
+            member this.refresh(): Variable = failwith ""
 
     type Environment = (Variable * Term) list
 
@@ -34,11 +36,11 @@ module AST =
             | Unit -> TypeUnit
             | TypeInteger
             | TypeUnit -> Proposition
-            | Variable var ->
+            | Variable ((Variable.Variable recordVar) as var) ->
                 List.tryFind (fst >> ((=) var)) env
                 |> function
                     | Some(_, term) -> term
-                    | None -> failwith $"Unbound variable {var.Label}"
+                    | None -> failwith $"Unbound variable {recordVar.Label}"
             | Application(abs, arg) ->
                 match abs.typeCheck (env) with
                 | Forall rule ->
@@ -74,8 +76,25 @@ module AST =
 
         member this.normalization() = failwith ""
 
-        member this.substitution (variable: Variable) (argument: Term) : Term = failwith ""
+        member this.substitution (bindings: Environment) : Term = 
+            let substituteAbstraction (abs: Abstraction) = failwith ""
 
+
+            match this with
+            | Integer _ 
+            | Unit
+            | TypeInteger
+            | TypeUnit
+            | Proposition
+            | Universe -> this
+            | Variable var ->
+                List.tryFind (fst >> ((=) var)) bindings
+                |> Option.map snd
+                |> Option.defaultValue this
+            | Application (abs, arg) ->
+                Application (abs.substitution(bindings), arg.substitution(bindings))
+            | Lambda abs -> failwith ""
+            | Forall abs -> failwith ""
 
 module EntryPoint =
 
