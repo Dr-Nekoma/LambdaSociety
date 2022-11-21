@@ -1,4 +1,4 @@
-﻿namespace CalculusOfConstructions
+namespace CalculusOfConstructions
 
 (*
     References: 
@@ -7,9 +7,11 @@
 
 module AST =
 
-    type Variable = Variable of {| Label: string |}
+    type Variable = Variable of {| Label: string; Order : int |}
         with
-            member this.refresh(): Variable = failwith ""
+            member this.refresh(): Variable = 
+                match this with
+                | Variable this -> Variable {| this with Order = this.Order + 1 |}
 
     type Environment = (Variable * Term) list
 
@@ -74,11 +76,41 @@ module AST =
 
         member this.equality(target: Term): bool = failwith ""
 
-        member this.normalization() = failwith ""
+        member this.normalization(context: Environment) =
+            let normalizeAbstraction (abs: Abstraction): Abstraction =
+                let annotation = abs.Annotation.normalization(context) in
+                {| abs with Variable = abs.Variable; Annotation = annotation; Body = abs.Body.normalization((abs.Variable, annotation)::context) |}
+
+            match this with
+            | Integer _ 
+            | Unit
+            | TypeInteger
+            | TypeUnit
+            | Proposition
+            | Universe -> this
+            | Variable var ->
+                List.tryFind (fst >> ((=) var)) context
+                |> Option.map snd
+                |> Option.defaultValue (failwith "")
+            | Application (abs, arg) ->
+                let arg' = arg.normalization(context) in
+                match abs.normalization(context) with
+                | Lambda abs -> 
+                    let varInArg = abs.Body.substitution([(abs.Variable, arg')]) in
+                    varInArg.normalization(context)
+                | expr -> Application (expr, arg')
+            | Lambda abs -> 
+                Lambda (normalizeAbstraction abs)
+            | Forall abs -> 
+                Forall (normalizeAbstraction abs)
 
         member this.substitution (bindings: Environment) : Term = 
-            let substituteAbstraction (abs: Abstraction) = failwith ""
-
+            let substituteAbstraction (abs: Abstraction) = 
+                let x' = abs.Variable.refresh() in
+                {| abs with 
+                    Variable = x'; 
+                    Annotation = abs.Annotation.substitution(bindings);
+                    Body = abs.Body.substitution((abs.Variable, Variable x')::bindings) |}
 
             match this with
             | Integer _ 
@@ -93,8 +125,10 @@ module AST =
                 |> Option.defaultValue this
             | Application (abs, arg) ->
                 Application (abs.substitution(bindings), arg.substitution(bindings))
-            | Lambda abs -> failwith ""
-            | Forall abs -> failwith ""
+            | Lambda abs -> 
+                Lambda (substituteAbstraction abs)
+            | Forall abs -> 
+                Forall (substituteAbstraction abs)
 
 module EntryPoint =
 
